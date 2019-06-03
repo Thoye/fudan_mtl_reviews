@@ -34,7 +34,7 @@ class BaseModel(object):
     self.saver.save(session, self.save_path, global_step)
 
 
-class LinearLayer(tf.layers.Layer):
+class LinearLayer(tf.layers.Layer):  # 全连接层
   '''inherit tf.layers.Layer to cache trainable variables
   '''
   def __init__(self, layer_name, out_size, is_regularize, **kwargs):
@@ -57,14 +57,14 @@ class LinearLayer(tf.layers.Layer):
 
   def call(self, x):
     loss_l2 = tf.constant(0, dtype=tf.float32)
-    o = tf.nn.xw_plus_b(x, self.w, self.b)
-    if self.is_regularize:
-        loss_l2 += tf.nn.l2_loss(self.w) + tf.nn.l2_loss(self.b)
-    return o, loss_l2
+    o = tf.nn.xw_plus_b(x, self.w, self.b)  # xw_plus_b 全连接
+    if self.is_regularize:  # 无所谓，加上
+        loss_l2 += tf.nn.l2_loss(self.w) + tf.nn.l2_loss(self.b)  # tf.nn.l2_loss 在没有`sqrt`的情况下计算张量的L2范数的一半
+    return o, loss_l2  # loss_l2 是 w和b 的loss
 
 
-class ConvLayer(tf.layers.Layer):
-  '''inherit tf.layers.Layer to cache trainable variables
+class ConvLayer(tf.layers.Layer):  # PCNN 卷积层
+  '''inherit tf.layers.Layer to cache trainable variables  :继承tf.layers.Layer来缓存可训练的变量
   '''
   def __init__(self, layer_name, filter_sizes, **kwargs):
     self.layer_name = layer_name
@@ -105,9 +105,10 @@ class ConvLayer(tf.layers.Layer):
                         padding='SAME')
       conv = tf.nn.relu(conv + self.conv[b_name]) # batch,max_len,1,filters
       conv_outs.append(conv)
-    return conv_outs
+    return conv_outs  # [conv1,conv2,...]
 
-def max_pool(conv_outs, max_len):
+
+def max_pool(conv_outs, max_len):  # 具体步骤不明
   pool_outs = []
 
   for conv in conv_outs:
@@ -122,15 +123,17 @@ def max_pool(conv_outs, max_len):
 
   return pools
 
+
 def optimize(loss):
   optimizer = tf.train.AdamOptimizer(FLAGS.lrn_rate)
 
   update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-  with tf.control_dependencies(update_ops):# for batch_norm
+  with tf.control_dependencies(update_ops):  # for batch_norm
     train_op = optimizer.minimize(loss)
   return train_op
 
-class FlipGradientBuilder(object):
+
+class FlipGradientBuilder(object):  # 梯度
   '''Gradient Reversal Layer from https://github.com/pumpikano/tf-dann'''
   def __init__(self):
     self.num_calls = 0
